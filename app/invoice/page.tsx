@@ -13,9 +13,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
-import html2pdf from "html2pdf.js"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { InvoiceHistory } from "../components/InvoiceHistory"
+import { generatePdf } from "../components/PdfGenerator"
 
 interface Product {
   id: string
@@ -146,34 +146,37 @@ export default function InvoicePage() {
     setIsSearching(false)
   }
 
-  const updateItemQuantity = (index: number, quantity: number) => {
-    if (quantity < 1) return
+  const updateItemQuantity = (index: number, quantity: number | string) => {
+    const numericQuantity = typeof quantity === 'string' ? parseInt(quantity, 10) : quantity;
+    if (isNaN(numericQuantity) || numericQuantity < 1) return;
 
-    const updatedItems = [...invoiceItems]
-    updatedItems[index].quantity = quantity
-    updatedItems[index].total = quantity * updatedItems[index].unitPrice
+    const updatedItems = [...invoiceItems];
+    updatedItems[index].quantity = numericQuantity;
+    updatedItems[index].total = numericQuantity * updatedItems[index].unitPrice;
 
-    setInvoiceItems(updatedItems)
-  }
+    setInvoiceItems(updatedItems);
+  };
 
-  const updateItemPrice = (index: number, price: number) => {
-    if (price < 0) return
+  const updateItemPrice = (index: number, price: number | string) => {
+    const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+    if (isNaN(numericPrice) || numericPrice < 0) return;
 
-    const updatedItems = [...invoiceItems]
-    updatedItems[index].unitPrice = price
-    updatedItems[index].total = updatedItems[index].quantity * price
+    const updatedItems = [...invoiceItems];
+    updatedItems[index].unitPrice = numericPrice;
+    updatedItems[index].total = updatedItems[index].quantity * numericPrice;
 
-    setInvoiceItems(updatedItems)
-  }
+    setInvoiceItems(updatedItems);
+  };
 
-  const updateItemTaxRate = (index: number, taxRate: number) => {
-    if (taxRate < 0) return
+  const updateItemTaxRate = (index: number, taxRate: number | string) => {
+    const numericTaxRate = typeof taxRate === 'string' ? parseFloat(taxRate) : taxRate;
+    if (isNaN(numericTaxRate) || numericTaxRate < 0) return;
 
-    const updatedItems = [...invoiceItems]
-    updatedItems[index].taxRate = taxRate
+    const updatedItems = [...invoiceItems];
+    updatedItems[index].taxRate = numericTaxRate;
 
-    setInvoiceItems(updatedItems)
-  }
+    setInvoiceItems(updatedItems);
+  };
 
   const removeItem = (index: number) => {
     const updatedItems = [...invoiceItems]
@@ -265,27 +268,7 @@ export default function InvoicePage() {
   // }
 
   const downloadInvoice = () => {
-    if (invoiceRef.current) {
-      const element = invoiceRef.current;
-      const opt = {
-        margin: 1,
-        filename: `Invoice-${invoiceNumber}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: "cm", format: "a4", orientation: "portrait" }
-      };
-
-      // Use Promise chain for better error handling
-      html2pdf().from(element).set(opt).save()
-        .catch(error => {
-          console.error("Error generating PDF:", error);
-          toast({
-            title: "Error",
-            description: "Failed to generate PDF. Please try again.",
-            variant: "destructive",
-          });
-        });
-    }
+    generatePdf({ invoiceRef, invoiceNumber });
   };
 
   return (
@@ -418,8 +401,8 @@ export default function InvoicePage() {
                                 <Input
                                   type="number"
                                   min="1"
-                                  value={item.quantity}
-                                  onChange={(e) => updateItemQuantity(index, Number.parseInt(e.target.value))}
+                                  value={item.quantity || ''}
+                                  onChange={(e) => updateItemQuantity(index, e.target.value)}
                                   className="w-20"
                                 />
                               </TableCell>
@@ -428,8 +411,8 @@ export default function InvoicePage() {
                                   type="number"
                                   min="0"
                                   step="0.01"
-                                  value={item.unitPrice}
-                                  onChange={(e) => updateItemPrice(index, Number.parseFloat(e.target.value))}
+                                  value={item.unitPrice || ''}
+                                  onChange={(e) => updateItemPrice(index, e.target.value)}
                                   className="w-24"
                                 />
                               </TableCell>
